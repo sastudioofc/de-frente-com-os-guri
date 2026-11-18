@@ -3,6 +3,9 @@
 Site de chamada de vídeo do programa: todo mundo entra pelo navegador com a câmera ligada e escolhe o próprio fundo. Roda **100% no GitHub Pages**, de graça e sem servidor.
 
 **O que tem:**
+- **Tier List ao vivo** (aba Tier List): todo mundo arrasta os itens ao mesmo tempo e vê na hora. Itens com texto ou imagem (dá pra colar com Ctrl+V ou arrastar do computador), tiers com nome e cor editáveis.
+- **Chaveamento** (aba Chaveamento): mata-mata com até 32 participantes, que podem ser puxados da Tier List. Cada um vota no duelo, o vencedor avança com animação, e o campeão ganha confete.
+- Sons e animações na interface (dá pra desligar os sons em **Mais → Sons**)
 - Chamada de vídeo e áudio com até 6 pessoas (Chrome, Edge, Firefox; no celular também funciona)
 - **Fundos**: desfoque, 4 prontos (Estúdio, Templo, Neon, Madeira) ou **qualquer imagem sua**. O recorte é feito com IA no computador de cada um.
 - **Compartilhar tela** (tecla **T**), com o áudio da aba junto, pra mostrar trailer, notícia ou print
@@ -54,6 +57,10 @@ index.html             tela de entrada e sala
 js/app.js              interface, dispositivos, controles
 js/p2p.js              conexão entre participantes (Trystero)
 js/extras.js           pauta, cronômetro e chat
+js/tierlist.js         tier list compartilhada
+js/bracket.js          chaveamento com votação
+js/images.js           imagens da tier list/chaveamento (vão de um pro outro)
+js/sfx.js              sons da interface (gerados na hora, sem arquivos)
 js/background.js       recorte com IA e troca de fundo (MediaPipe)
 js/config.js           configurações
 vendor/                bibliotecas (Trystero e MediaPipe), já embutidas

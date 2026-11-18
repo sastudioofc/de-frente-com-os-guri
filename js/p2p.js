@@ -96,7 +96,8 @@ export class P2PRoom extends EventTarget {
   }
 
   // ---- estado compartilhado / mensagens (pauta, cronômetro, chat) ----
-  makeState(name, initial) { return this.room.makeState(name, initial); }
+  makeState(name, initial, config) { return this.room.makeState(name, initial, config); }
+  makeUserState(name, initial, config) { return this.room.makeUserState(name, initial, config); }
   makeAction(name) { return this.room.makeAction(name); }
 
   // conexões WebRTC por pessoa (pra medir qualidade)

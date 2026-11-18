@@ -1,5 +1,6 @@
 // Pauta compartilhada, cronômetro do episódio e chat.
 // Tudo sincronizado entre os participantes pelo próprio Trystero (sem servidor).
+import { sfx } from './sfx.js?v=__V__';
 
 const $ = (s) => document.querySelector(s);
 const uid = () => Math.random().toString(36).slice(2, 10);
@@ -28,11 +29,13 @@ export function setupExtras({ mesh, myName, toast, openDrawer, isDrawerOpen }) {
     const ms = (t.acc || 0) + (t.running ? Date.now() - t.startedAt : 0);
     $('#timerText').textContent = hhmmss(ms);
     box.classList.toggle('running', !!t.running);
-    $('#timerToggle').textContent = t.running ? '⏸' : '▶';
+    const ico = t.running ? '#i-pause' : '#i-play';
+    if ($('#timerToggle').dataset.ico !== ico) { $('#timerToggle').dataset.ico = ico; $('#timerToggle').innerHTML = `<svg><use href="${ico}"/></svg>`; }
   };
   setInterval(tick, 500);
   timer.onChange(tick, { replay: true });
   $('#timerToggle').addEventListener('click', () => {
+    sfx((timer.get() || {}).running ? 'toggleOff' : 'toggleOn');
     timer.set((t) => (t.running
       ? { running: false, startedAt: 0, acc: (t.acc || 0) + (Date.now() - t.startedAt) }
       : { running: true, startedAt: Date.now(), acc: t.acc || 0 }));
@@ -51,9 +54,10 @@ export function setupExtras({ mesh, myName, toast, openDrawer, isDrawerOpen }) {
     items.forEach((it, idx) => {
       const li = document.createElement('li');
       li.className = (it.done ? 'done' : '') + (idx === firstOpen ? ' current' : '');
-      li.innerHTML = `<span class="txt"></span><button class="rm" title="Remover" type="button">✕</button>`;
+      li.innerHTML = `<span class="txt"></span><button class="rm" title="Remover" type="button"><svg><use href="#i-x"/></svg></button>`;
+      li.style.animationDelay = Math.min(idx * 30, 300) + 'ms';
       li.querySelector('.txt').textContent = it.text;
-      li.addEventListener('click', () =>
+      li.addEventListener('click', () => sfx(it.done ? 'click' : 'pop') ||
         agenda.set((a) => ({ items: a.items.map((x) => (x.id === it.id ? { ...x, done: !x.done } : x)) })));
       li.querySelector('.rm').addEventListener('click', (e) => {
         e.stopPropagation();
@@ -62,6 +66,7 @@ export function setupExtras({ mesh, myName, toast, openDrawer, isDrawerOpen }) {
       list.append(li);
     });
     const done = items.filter((i) => i.done).length;
+    $('#agendaBar').style.width = items.length ? (done / items.length) * 100 + '%' : '0';
     $('#agendaProgress').textContent = items.length ? `${done} de ${items.length} tópicos falados` : 'Nenhum tópico ainda.';
   };
   agenda.onChange(renderAgenda, { replay: true });
@@ -72,6 +77,7 @@ export function setupExtras({ mesh, myName, toast, openDrawer, isDrawerOpen }) {
     if (!text) return;
     agenda.set((a) => ({ items: [...((a && a.items) || []), { id: uid(), text, done: false }] }));
     $('#agendaInput').value = '';
+    sfx('pop');
   });
 
   // ---------------- chat ----------------
@@ -85,7 +91,7 @@ export function setupExtras({ mesh, myName, toast, openDrawer, isDrawerOpen }) {
   };
   const addMsg = ({ name, text, ts }, mine) => {
     const list = $('#chatList');
-    list.querySelector('.hint')?.remove();
+    list.querySelector('.empty')?.remove();
     const time = new Date(ts).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     const div = document.createElement('div');
     div.className = 'msg' + (mine ? ' mine' : '');
@@ -98,6 +104,7 @@ export function setupExtras({ mesh, myName, toast, openDrawer, isDrawerOpen }) {
     if (!data || typeof data.text !== 'string') return;
     const msg = { name: String(data.name || 'Guri').slice(0, 30), text: data.text.slice(0, 1000), ts: Date.now() };
     addMsg(msg, false);
+    sfx('message');
     if (!isDrawerOpen('chatDrawer')) {
       setUnread(unread + 1);
       toast(`💬 ${msg.name}: ${msg.text.slice(0, 60)}`, 3000);

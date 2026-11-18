@@ -1,6 +1,10 @@
 import { P2PRoom } from './p2p.js?v=__V__';
 import { CONFIG } from './config.js?v=__V__';
 import { setupExtras } from './extras.js?v=__V__';
+import { sfx, setSfx, sfxEnabled } from './sfx.js?v=__V__';
+import { ImageStore } from './images.js?v=__V__';
+import { setupTierList } from './tierlist.js?v=__V__';
+import { setupBracket } from './bracket.js?v=__V__';
 import { CameraProcessor } from './background.js?v=__V__';
 
 const $ = (s) => document.querySelector(s);
@@ -38,12 +42,24 @@ const state = {
 };
 
 // ---------------- util ----------------
-function toast(msg, ms = 2400) {
-  const t = $('#toast');
+function toast(msg, ms = 2600) {
+  const box = $('#toasts');
+  const t = document.createElement('div');
+  t.className = 'toast';
   t.textContent = msg;
-  t.classList.add('show');
-  clearTimeout(toast._t);
-  toast._t = setTimeout(() => t.classList.remove('show'), ms);
+  box.append(t);
+  while (box.children.length > 3) box.firstElementChild.remove();
+  setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 300); }, ms);
+}
+function icon(name, cls = '') {
+  const s = document.createElement('span');
+  s.innerHTML = `<svg class="${cls}"><use href="#i-${name}"/></svg>`;
+  return s.firstChild;
+}
+function removeAnimated(node) {
+  if (!node) return;
+  node.classList.add('leaving');
+  setTimeout(() => { node.remove(); layout(); updateStage(); }, 280);
 }
 async function copy(text, okMsg = 'Copiado!') {
   try { await navigator.clipboard.writeText(text); toast(okMsg); }
@@ -306,12 +322,12 @@ function tileFor(id, { local = false } = {}) {
   if (t) return t;
   t = el('div', { class: 'tile' + (local ? ' local' : ''), id: 'tile-' + id },
     el('video', { autoplay: '', playsinline: '' }),
-    el('div', { class: 'plate' }, el('span', { class: 'name' }), el('i', { class: 'muted-ico', title: 'Mic desligado' }, '🔇'),
+    el('div', { class: 'plate' }, el('span', { class: 'name' }), el('i', { class: 'muted-ico', title: 'Mic desligado' }, icon('mic-off')),
       el('span', { class: 'net hidden', title: 'Qualidade da conexão' }, el('i'), el('i'), el('i'))),
     el('div', { class: 'overlay cam-off hidden' }, el('div', { class: 'avatar' })),
     el('div', { class: 'status hidden' }),
     el('div', { class: 'net-warn hidden' }, '⚠ Internet instável'),
-    el('button', { class: 'pin', type: 'button', title: 'Fixar no palco' }, '📌'));
+    el('button', { class: 'pin', type: 'button', title: 'Fixar no palco' }, icon('pin')));
   const v = t.querySelector('video');
   if (local) v.muted = true;
   t.querySelector('.pin').addEventListener('click', (e) => { e.stopPropagation(); togglePin(t.id); });
@@ -329,7 +345,7 @@ function screenTile(id, name, stream, { local = false } = {}) {
     t = el('div', { class: 'tile screen', id: tid },
       el('video', { autoplay: '', playsinline: '' }),
       el('div', { class: 'plate' }, el('span', { class: 'name' })),
-      el('button', { class: 'pin', type: 'button', title: 'Fixar no palco' }, '📌'));
+      el('button', { class: 'pin', type: 'button', title: 'Fixar no palco' }, icon('pin')));
     if (local) t.querySelector('video').muted = true;
     t.querySelector('.pin').addEventListener('click', (e) => { e.stopPropagation(); togglePin(tid); });
     t.addEventListener('dblclick', () => togglePin(tid));
@@ -352,13 +368,13 @@ function removeScreenTile(id) {
   const t = document.getElementById('tile-screen-' + id);
   if (!t) return;
   if (state.pinned === t.id) state.pinned = null;
-  t.remove();
-  layout();
-  updateStage();
+  t.id = '';
+  removeAnimated(t);
 }
 
 // ---------------- palco ----------------
 function setStage(on) {
+  if (state.stage !== on && state.mesh) sfx('whoosh');
   state.stage = on;
   $('#grid').classList.toggle('stage', on);
   $('#stageBtn').classList.toggle('on', on);
@@ -474,12 +490,14 @@ async function toggleScreen() {
   if (vt) vt.contentHint = 'detail';
   vt?.addEventListener('ended', stopScreen); // botão "parar de compartilhar" do navegador
   await state.mesh.startScreen(stream);
+  sfx('toggleOn');
   $('#screenBtn').classList.add('on');
   screenTile('me', 'você', stream, { local: true });
 }
 function stopScreen() {
   if (!state.mesh?.screenStream) return;
   state.mesh.stopScreen();
+  sfx('toggleOff');
   $('#screenBtn').classList.remove('on');
   removeScreenTile('me');
 }
@@ -540,6 +558,7 @@ function startConnectionMonitor(baseKbps) {
 function openDrawer(id) {
   const d = document.getElementById(id);
   const willOpen = d.classList.contains('hidden');
+  sfx('click');
   document.querySelectorAll('.drawer').forEach((x) => x.classList.add('hidden'));
   if (willOpen) d.classList.remove('hidden');
   ['bgDrawer:bgBtn', 'agendaDrawer:agendaBtn', 'chatDrawer:chatBtn'].forEach((pair) => {
@@ -569,10 +588,18 @@ async function join(e) {
 
   const password = $('#pwdInput').value;
   state.mesh = new P2PRoom({ roomId: state.room, password, name: state.name, localStream: state.localStream, maxUsers: CONFIG.maxUsers });
-  state.mesh.addEventListener('peer-update', (ev) => refreshPeer(ev.detail.id));
+  state.mesh.addEventListener('peer-update', (ev) => {
+    const isNew = !document.getElementById('tile-' + ev.detail.id);
+    refreshPeer(ev.detail.id);
+    if (isNew) sfx('join');
+  });
   state.mesh.addEventListener('peer-left', (ev) => {
-    document.getElementById('tile-' + ev.detail.id)?.remove();
-    layout();
+    const t = document.getElementById('tile-' + ev.detail.id);
+    const nm = t?.querySelector('.name')?.textContent;
+    if (t) { t.id = ''; removeAnimated(t); }
+    removeScreenTile(ev.detail.id);
+    sfx('leave');
+    if (nm && nm !== '…') toast(`${nm} saiu da sala`);
   });
   state.mesh.addEventListener('error', (ev) => {
     const e = ev.detail;
@@ -587,9 +614,9 @@ async function join(e) {
   history.replaceState(null, '', `${location.pathname}?sala=${encodeURIComponent(state.room)}`);
   $('#lobby').classList.add('hidden');
   $('#room').classList.remove('hidden');
-  $('#roomLabel').textContent = 'sala: ' + state.room;
+  document.title = `${state.room} · De Frente Com Os Guri`;
   // ajustes de dispositivo vão pro diálogo
-  document.querySelectorAll('#joinForm .row2').forEach((r) => $('#settingsSlot').append(r));
+  document.querySelectorAll('#joinForm .dev-row').forEach((r) => $('#settingsSlot').append(r));
   $('#settingsSlot').append($('#joinForm .meter'));
   $('#bgSlotDrawer').append($('#bgPicker'));
 
@@ -597,12 +624,56 @@ async function join(e) {
   setupSpeakingDetection();
   startConnectionMonitor({ 1080: 4000, 720: 2500, 480: 1000 }[$('#qualitySelect').value]);
   state.extras = setupExtras({ mesh: state.mesh, myName: () => state.name, toast, openDrawer, isDrawerOpen });
+  setupViews();
+  sfx('join');
+}
+
+// ---------------- abas: Câmeras / Tier List / Chaveamento ----------------
+const VIEWS = ['cams', 'tier', 'bracket'];
+function setView(v) {
+  if (!VIEWS.includes(v)) return;
+  const room = $('#room');
+  if (room.dataset.view === v) return;
+  room.dataset.view = v;
+  document.querySelectorAll('#viewTabs .tab').forEach((t) => {
+    const on = t.dataset.view === v;
+    t.classList.toggle('active', on);
+    if (on) t.querySelector('.dot')?.classList.add('hidden');
+  });
+  $('#tierView').classList.toggle('hidden', v !== 'tier');
+  $('#bracketView').classList.toggle('hidden', v !== 'bracket');
+  moveInk();
+  sfx('whoosh');
+  if (v === 'cams') updateStage();
+}
+function moveInk() {
+  const active = $('#viewTabs .tab.active');
+  const ink = $('#viewTabs .tab-ink');
+  if (!active || !ink) return;
+  ink.style.width = active.offsetWidth + 'px';
+  ink.style.transform = `translateX(${active.offsetLeft - 4}px)`;
+}
+function markActivity(view) {
+  if ($('#room').dataset.view === view) return;
+  $(`#viewTabs .tab[data-view="${view}"] .dot`)?.classList.remove('hidden');
+}
+function setupViews() {
+  const nameOf = (userId) => state.mesh.peers.get(userId)?.info?.name || null;
+  const images = new ImageStore(state.mesh);
+  const tier = setupTierList({ mesh: state.mesh, images, root: $('#tierView'), toast, nameOf, onActivity: () => markActivity('tier') });
+  const bracket = setupBracket({ mesh: state.mesh, images, root: $('#bracketView'), toast, nameOf, getTierItems: () => tier.getItems(), onActivity: () => markActivity('bracket') });
+  tier.setImageListener(() => bracket.refresh());
+  document.querySelectorAll('#viewTabs .tab').forEach((t) => t.addEventListener('click', () => setView(t.dataset.view)));
+  requestAnimationFrame(moveInk);
+  window.addEventListener('resize', moveInk);
+  document.fonts?.ready.then(moveInk);
 }
 
 function setMic(on) {
   state.mic = on;
   if (state.audioTrack) state.audioTrack.enabled = on;
   $('#micBtn').classList.toggle('off', !on);
+  if (state.mesh) sfx(on ? 'toggleOn' : 'toggleOff');
   state.mesh?.setState({ mic: on });
   if (state.mesh) updateTile('me', { name: state.name + ' (você)', mic: on, cam: state.cam });
 }
@@ -610,6 +681,7 @@ function setCam(on) {
   state.cam = on;
   state.processor.videoTrack.enabled = on;
   $('#camBtn').classList.toggle('off', !on);
+  if (state.mesh) sfx(on ? 'toggleOn' : 'toggleOff');
   state.mesh?.setState({ cam: on });
   if (state.mesh) updateTile('me', { name: state.name + ' (você)', mic: state.mic, cam: on });
 }
@@ -679,11 +751,27 @@ async function init() {
   $('#stageBtn').addEventListener('click', () => setStage(!state.stage));
   if (!navigator.mediaDevices.getDisplayMedia) $('#screenBtn').classList.add('hidden'); // celular não compartilha tela
   $('#inviteBtn').addEventListener('click', () => {
+    closeMenu();
     const pwd = $('#pwdInput').value;
     const url = `${location.origin}${location.pathname}?sala=${encodeURIComponent(state.room)}` + (pwd ? `#senha=${encodeURIComponent(pwd)}` : '');
     copy(url, 'Convite copiado! Manda pros guri.');
   });
-  $('#settingsBtn').addEventListener('click', () => $('#settingsDialog').showModal());
+  $('#settingsBtn').addEventListener('click', () => { closeMenu(); $('#settingsDialog').showModal(); });
+  $('#keysBtn').addEventListener('click', () => { closeMenu(); $('#keysDialog').showModal(); });
+  const syncSound = () => {
+    $('#soundBtn').classList.toggle('off', !sfxEnabled());
+    $('#soundLabel').textContent = sfxEnabled() ? 'Sons: ligados' : 'Sons: desligados';
+  };
+  syncSound();
+  $('#soundBtn').addEventListener('click', () => { setSfx(!sfxEnabled()); syncSound(); sfx('toggleOn'); });
+  const closeMenu = () => { $('#moreMenu').classList.add('hidden'); $('#moreBtn').classList.remove('on'); };
+  $('#moreBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const open = $('#moreMenu').classList.toggle('hidden');
+    $('#moreBtn').classList.toggle('on', !open);
+    sfx('click');
+  });
+  document.addEventListener('click', (e) => { if (!e.target.closest('.more-wrap')) closeMenu(); });
   $('#leaveBtn').addEventListener('click', async () => {
     try { await state.mesh?.leave(); } catch {}
     location.href = `${location.pathname}?sala=${encodeURIComponent(state.room)}`;
@@ -701,6 +789,10 @@ async function init() {
     if (e.key === 'c' || e.key === 'C') openDrawer('chatDrawer');
     if (e.key === 't' || e.key === 'T') toggleScreen();
     if (e.key === 'p' || e.key === 'P') setStage(!state.stage);
+    if (e.key === '1') setView('cams');
+    if (e.key === '2') setView('tier');
+    if (e.key === '3') setView('bracket');
+    if (e.key === 'Escape') { closeMenu(); document.querySelectorAll('.drawer').forEach((d) => d.classList.add('hidden')); ['bgBtn', 'agendaBtn', 'chatBtn'].forEach((id) => $('#' + id).classList.remove('on')); }
   });
 }
 

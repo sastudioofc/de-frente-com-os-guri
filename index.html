@@ -3,16 +3,56 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0b0a09" />
   <title>Estúdio · De Frente Com Os Guri</title>
   <link rel="icon" href="img/favicon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css?v=__V__" />
 </head>
 <body>
+  <!-- Ícones (SVG sprite) -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="2.5" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3.5M8.5 21.5h7"/></symbol>
+      <symbol id="i-mic-off" viewBox="0 0 24 24"><path d="M15 9.3V5.5a3 3 0 0 0-5.7-1.3M9 9v2.5a3 3 0 0 0 5 2.2M5 11a7 7 0 0 0 11.6 5.3M19 11a7 7 0 0 1-.6 2.8M12 18v3.5M8.5 21.5h7M3 3l18 18"/></symbol>
+      <symbol id="i-cam" viewBox="0 0 24 24"><rect x="2.5" y="6" width="13" height="12" rx="2.5"/><path d="M15.5 10.2 21.5 7v10l-6-3.2"/></symbol>
+      <symbol id="i-cam-off" viewBox="0 0 24 24"><path d="M10.5 6h2.5a2.5 2.5 0 0 1 2.5 2.5v2l6-3.5v10l-2-1.1M15.5 15.5V16a2 2 0 0 1-2 2h-9a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h1M3 3l18 18"/></symbol>
+      <symbol id="i-screen" viewBox="0 0 24 24"><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 21h8M12 17v4M9.5 12.5 12 10l2.5 2.5M12 10v4"/></symbol>
+      <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></symbol>
+      <symbol id="i-stage" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="12" rx="2"/><rect x="3" y="18" width="5" height="3" rx="1"/><rect x="9.5" y="18" width="5" height="3" rx="1"/><rect x="16" y="18" width="5" height="3" rx="1"/></symbol>
+      <symbol id="i-list" viewBox="0 0 24 24"><path d="M10 6h10M10 12h10M10 18h10M3.5 6l1.2 1.2L7 5M3.5 12l1.2 1.2L7 11M4 18h2"/></symbol>
+      <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 12a8.5 8.5 0 0 1-12.3 7.6L3.5 21l1.5-4.8A8.5 8.5 0 1 1 21 12z"/></symbol>
+      <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/></symbol>
+      <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></symbol>
+      <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></symbol>
+      <symbol id="i-leave" viewBox="0 0 24 24"><path d="M9 21H5.5A2.5 2.5 0 0 1 3 18.5v-13A2.5 2.5 0 0 1 5.5 3H9M16 17l5-5-5-5M21 12H9"/></symbol>
+      <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/></symbol>
+      <symbol id="i-tier" viewBox="0 0 24 24"><rect x="3" y="3.5" width="4.5" height="4.5" rx="1"/><rect x="3" y="9.75" width="4.5" height="4.5" rx="1"/><rect x="3" y="16" width="4.5" height="4.5" rx="1"/><path d="M10.5 5.75h10.5M10.5 12h7M10.5 18.25h4"/></symbol>
+      <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M8 21h8M12 16.5V21M7 3.5h10V9a5 5 0 0 1-10 0zM17 5.5h3V7a3.5 3.5 0 0 1-3.3 3.5M7 5.5H4V7a3.5 3.5 0 0 0 3.3 3.5"/></symbol>
+      <symbol id="i-vol" viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4zM15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></symbol>
+      <symbol id="i-vol-off" viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4zM16 9l6 6M22 9l-6 6"/></symbol>
+      <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15l12.5-7.5z"/></symbol>
+      <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+      <symbol id="i-reset" viewBox="0 0 24 24"><path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1L3.5 8.5M3.5 3.5v5h5"/></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+      <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+      <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></symbol>
+      <symbol id="i-shuffle" viewBox="0 0 24 24"><path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></symbol>
+      <symbol id="i-crown" viewBox="0 0 24 24"><path d="m3 8 4.5 4L12 5l4.5 7L21 8l-2 11H5z"/></symbol>
+      <symbol id="i-keyboard" viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6.5 10h1M10.5 10h1M14.5 10h1M6.5 14h11"/></symbol>
+      <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 17v4.5M8 3.5h8l-1 6 3 3.5H6L9 9.5z"/></symbol>
+      <symbol id="i-send" viewBox="0 0 24 24"><path d="M21.5 2.5 11 13M21.5 2.5 15 21.5l-4-8.5-8.5-4z"/></symbol>
+      <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
+    </defs>
+  </svg>
+
+  <div class="ambient" aria-hidden="true"><span></span><span></span><span></span></div>
+
   <!-- ============ LOBBY ============ -->
   <main id="lobby" class="screen">
-    <header class="brand">
+    <header class="brand reveal">
       <img src="img/logo.svg" alt="" class="brand-logo" />
       <div>
         <h1>De Frente Com Os Guri</h1>
@@ -21,8 +61,8 @@
     </header>
 
     <section class="lobby-grid">
-      <div class="preview-card">
-        <div class="tile local">
+      <div class="preview-card glass reveal" style="--d:.08s">
+        <div class="tile local lobby-tile">
           <video id="lobbyPreview" autoplay muted playsinline></video>
           <div class="plate"><span id="lobbyPlate">Você</span></div>
           <div id="camError" class="overlay hidden"></div>
@@ -30,22 +70,24 @@
         <div id="bgSlotLobby"></div>
       </div>
 
-      <form id="joinForm" class="join-card" autocomplete="off">
+      <form id="joinForm" class="join-card glass reveal" style="--d:.16s" autocomplete="off">
         <h2>Entrar no estúdio</h2>
         <label>Seu nome
           <input id="nameInput" required maxlength="30" placeholder="Digite seu nome" />
         </label>
-        <label>Sala
-          <input id="roomInput" required maxlength="40" placeholder="defrente" />
-        </label>
-        <label id="pwdLabel">Senha da sala <small>(opcional, todo mundo usa a mesma)</small>
-          <input id="pwdInput" type="password" maxlength="60" autocomplete="off" />
-        </label>
         <div class="row2">
+          <label>Sala
+            <input id="roomInput" required maxlength="40" placeholder="defrente" />
+          </label>
+          <label id="pwdLabel"><span>Senha <small>(opcional)</small></span>
+            <input id="pwdInput" type="password" maxlength="60" autocomplete="off" placeholder="todos usam a mesma" />
+          </label>
+        </div>
+        <div class="row2 dev-row">
           <label>Câmera <select id="camSelect"></select></label>
           <label>Microfone <select id="micSelect"></select></label>
         </div>
-        <div class="row2">
+        <div class="row2 dev-row">
           <label>Qualidade
             <select id="qualitySelect">
               <option value="720">720p (recomendado)</option>
@@ -60,72 +102,99 @@
             </select>
           </label>
         </div>
-        <div class="meter"><div id="micMeter"></div></div>
+        <div class="meter" title="Fale algo: a barra deve mexer"><div id="micMeter"></div></div>
         <p id="micStatus" class="hint mic-status hidden"></p>
-        <button class="btn primary big" type="submit" id="joinBtn">Entrar</button>
+        <button class="btn primary big shine" type="submit" id="joinBtn">Entrar no estúdio</button>
         <p id="joinError" class="error"></p>
       </form>
     </section>
   </main>
 
   <!-- ============ SALA ============ -->
-  <main id="room" class="screen hidden">
+  <main id="room" class="screen hidden" data-view="cams">
     <header class="room-top">
       <div class="brand small">
         <img src="img/logo.svg" alt="" class="brand-logo" />
         <h1>De Frente Com Os Guri</h1>
       </div>
-      <div class="timer" id="timerBox" title="Cronômetro do episódio (todo mundo vê o mesmo)">
-        <span class="rec-dot"></span><span id="timerText">00:00:00</span>
-        <button class="tbtn" id="timerToggle" title="Iniciar / pausar">▶</button>
-        <button class="tbtn" id="timerReset" title="Zerar">↺</button>
-      </div>
-      <div class="room-meta">
-        <span class="pill live">● NA CALL</span>
-        <span class="pill" id="roomLabel"></span>
+
+      <nav class="tabs" id="viewTabs" role="tablist">
+        <button class="tab active" data-view="cams" role="tab"><svg><use href="#i-grid"/></svg><span>Câmeras</span></button>
+        <button class="tab" data-view="tier" role="tab"><svg><use href="#i-tier"/></svg><span>Tier List</span><i class="dot hidden"></i></button>
+        <button class="tab" data-view="bracket" role="tab"><svg><use href="#i-trophy"/></svg><span>Chaveamento</span><i class="dot hidden"></i></button>
+        <span class="tab-ink" aria-hidden="true"></span>
+      </nav>
+
+      <div class="top-right">
+        <div class="timer" id="timerBox" title="Cronômetro do episódio (todo mundo vê o mesmo)">
+          <span class="rec-dot"></span><span id="timerText">00:00:00</span>
+          <button class="tbtn" id="timerToggle" title="Iniciar / pausar"><svg><use href="#i-play"/></svg></button>
+          <button class="tbtn" id="timerReset" title="Zerar"><svg><use href="#i-reset"/></svg></button>
+        </div>
         <span class="pill" id="countLabel"></span>
       </div>
     </header>
 
-    <section id="grid" class="grid"></section>
+    <section class="stage-area">
+      <section id="grid" class="grid"></section>
+      <section id="tierView" class="view-pane hidden" aria-label="Tier List"></section>
+      <section id="bracketView" class="view-pane hidden" aria-label="Chaveamento"></section>
+    </section>
 
-    <nav class="controls">
-      <button class="ctl" id="micBtn" title="Microfone (M)"><span class="ico">🎙️</span><span>Mic</span></button>
-      <button class="ctl" id="camBtn" title="Câmera (V)"><span class="ico">📷</span><span>Câmera</span></button>
-      <button class="ctl" id="screenBtn" title="Compartilhar tela (T)"><span class="ico">🖥️</span><span>Tela</span></button>
-      <button class="ctl" id="bgBtn" title="Fundo e imagem (B)"><span class="ico">🖼️</span><span>Fundo</span></button>
-      <button class="ctl" id="stageBtn" title="Modo palco (P)"><span class="ico">🎭</span><span>Palco</span></button>
-      <button class="ctl" id="agendaBtn" title="Pauta"><span class="ico">📋</span><span>Pauta</span></button>
-      <button class="ctl" id="chatBtn" title="Chat (C)"><span class="ico">💬</span><span>Chat</span><b class="badge hidden" id="chatBadge">0</b></button>
-      <button class="ctl" id="inviteBtn" title="Copiar convite"><span class="ico">🔗</span><span>Convite</span></button>
-      <button class="ctl" id="settingsBtn" title="Dispositivos"><span class="ico">⚙️</span><span>Ajustes</span></button>
-      <button class="ctl danger" id="leaveBtn" title="Sair"><span class="ico">⏻</span><span>Sair</span></button>
+    <nav class="dock" aria-label="Controles">
+      <div class="dock-group">
+        <button class="ctl" id="micBtn" data-tip="Microfone · M"><svg class="on-ico"><use href="#i-mic"/></svg><svg class="off-ico"><use href="#i-mic-off"/></svg><span>Mic</span></button>
+        <button class="ctl" id="camBtn" data-tip="Câmera · V"><svg class="on-ico"><use href="#i-cam"/></svg><svg class="off-ico"><use href="#i-cam-off"/></svg><span>Câmera</span></button>
+        <button class="ctl" id="screenBtn" data-tip="Compartilhar tela · T"><svg><use href="#i-screen"/></svg><span>Tela</span></button>
+      </div>
+      <div class="dock-sep"></div>
+      <div class="dock-group">
+        <button class="ctl" id="bgBtn" data-tip="Fundo e imagem · B"><svg><use href="#i-image"/></svg><span>Fundo</span></button>
+        <button class="ctl" id="stageBtn" data-tip="Modo palco · P"><svg><use href="#i-stage"/></svg><span>Palco</span></button>
+      </div>
+      <div class="dock-sep"></div>
+      <div class="dock-group">
+        <button class="ctl" id="agendaBtn" data-tip="Pauta do episódio"><svg><use href="#i-list"/></svg><span>Pauta</span></button>
+        <button class="ctl" id="chatBtn" data-tip="Chat · C"><svg><use href="#i-chat"/></svg><span>Chat</span><b class="badge hidden" id="chatBadge">0</b></button>
+        <div class="more-wrap">
+          <button class="ctl" id="moreBtn" data-tip="Mais opções" aria-haspopup="menu"><svg><use href="#i-more"/></svg><span>Mais</span></button>
+          <div class="menu hidden" id="moreMenu" role="menu">
+            <button role="menuitem" id="inviteBtn"><svg><use href="#i-link"/></svg>Copiar convite</button>
+            <button role="menuitem" id="settingsBtn"><svg><use href="#i-sliders"/></svg>Câmera e microfone</button>
+            <button role="menuitem" id="soundBtn"><svg class="on-ico"><use href="#i-vol"/></svg><svg class="off-ico"><use href="#i-vol-off"/></svg><span id="soundLabel">Sons: ligados</span></button>
+            <button role="menuitem" id="keysBtn"><svg><use href="#i-keyboard"/></svg>Atalhos do teclado</button>
+          </div>
+        </div>
+      </div>
+      <div class="dock-sep"></div>
+      <button class="ctl leave" id="leaveBtn" data-tip="Sair da sala"><svg><use href="#i-leave"/></svg><span>Sair</span></button>
     </nav>
   </main>
 
   <!-- ============ PAINÉIS ============ -->
   <aside id="bgDrawer" class="drawer hidden">
-    <div class="drawer-head"><h3>Fundo e imagem</h3><button class="x" data-close>✕</button></div>
+    <div class="drawer-head"><h3>Fundo e imagem</h3><button class="x" data-close aria-label="Fechar"><svg><use href="#i-x"/></svg></button></div>
     <div id="bgSlotDrawer"></div>
   </aside>
 
   <aside id="agendaDrawer" class="drawer hidden">
-    <div class="drawer-head"><h3>📋 Pauta do episódio</h3><button class="x" data-close>✕</button></div>
+    <div class="drawer-head"><h3>Pauta do episódio</h3><button class="x" data-close aria-label="Fechar"><svg><use href="#i-x"/></svg></button></div>
     <p class="hint">Todo mundo vê e pode editar. Clique no tópico pra marcar como falado.</p>
     <form id="agendaForm" class="inline-form" autocomplete="off">
       <input id="agendaInput" maxlength="140" placeholder="Novo tópico…" />
-      <button class="btn primary" type="submit">+</button>
+      <button class="btn primary icon-btn" type="submit" aria-label="Adicionar"><svg><use href="#i-plus"/></svg></button>
     </form>
+    <div class="progress"><div id="agendaBar"></div></div>
     <ol id="agendaList" class="agenda"></ol>
     <p class="hint" id="agendaProgress"></p>
   </aside>
 
   <aside id="chatDrawer" class="drawer hidden chat-drawer">
-    <div class="drawer-head"><h3>💬 Chat</h3><button class="x" data-close>✕</button></div>
-    <div id="chatList" class="chat-list"><p class="hint">As mensagens aparecem aqui. Links ficam clicáveis.</p></div>
+    <div class="drawer-head"><h3>Chat</h3><button class="x" data-close aria-label="Fechar"><svg><use href="#i-x"/></svg></button></div>
+    <div id="chatList" class="chat-list"><p class="hint empty">As mensagens aparecem aqui. Links ficam clicáveis.</p></div>
     <form id="chatForm" class="inline-form" autocomplete="off">
       <input id="chatInput" maxlength="1000" placeholder="Mensagem…" />
-      <button class="btn primary" type="submit">➤</button>
+      <button class="btn primary icon-btn" type="submit" aria-label="Enviar"><svg><use href="#i-send"/></svg></button>
     </form>
   </aside>
 
@@ -136,7 +205,7 @@
       <input type="range" id="blurRange" min="4" max="30" value="14" />
     </label>
     <div class="bg-title light-title">Imagem</div>
-    <label class="check"><input type="checkbox" id="autoLight" checked /> Correção de luz automática</label>
+    <label class="check"><input type="checkbox" id="autoLight" checked /><span class="switch"></span> Correção de luz automática</label>
     <label class="slider">Brilho <span id="brightVal">100%</span>
       <input type="range" id="brightRange" min="60" max="180" value="100" />
     </label>
@@ -147,12 +216,28 @@
   </div>
 
   <dialog id="settingsDialog">
-    <h3>⚙️ Ajustes</h3>
+    <h3>Câmera e microfone</h3>
     <div id="settingsSlot"></div>
     <div class="dialog-actions"><button class="btn" data-close>Fechar</button></div>
   </dialog>
 
-  <div id="toast" class="toast"></div>
+  <dialog id="keysDialog">
+    <h3>Atalhos do teclado</h3>
+    <ul class="keys">
+      <li><kbd>M</kbd> Liga/desliga o microfone</li>
+      <li><kbd>V</kbd> Liga/desliga a câmera</li>
+      <li><kbd>T</kbd> Compartilhar tela</li>
+      <li><kbd>P</kbd> Modo palco</li>
+      <li><kbd>B</kbd> Fundo e imagem</li>
+      <li><kbd>C</kbd> Chat</li>
+      <li><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> Câmeras · Tier List · Chaveamento</li>
+      <li>Dois cliques numa câmera: fixar no palco</li>
+    </ul>
+    <div class="dialog-actions"><button class="btn" data-close>Fechar</button></div>
+  </dialog>
+
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+  <canvas id="confetti" class="confetti" aria-hidden="true"></canvas>
 
   <script type="module" src="js/app.js?v=__V__"></script>
 </body>
