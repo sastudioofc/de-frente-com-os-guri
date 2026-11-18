@@ -160,7 +160,7 @@ export class CameraProcessor {
       const px = this.maskImageData.data;
       for (let i = 0, j = 3; i < data.length; i++, j += 4) {
         // curva suave pra borda ficar natural
-        let a = ((inv ? 1 - data[i] : data[i]) - 0.25) * 2;
+        let a = ((inv ? 1 - data[i] : data[i]) - 0.35) * 2.5;
         a = a < 0 ? 0 : a > 1 ? 1 : a;
         px[j] = a * 255;
       }

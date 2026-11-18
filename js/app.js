@@ -60,14 +60,56 @@ function qualityDims(q) {
   return { 1080: [1920, 1080], 720: [1280, 720], 480: [854, 480] }[q] || [1280, 720];
 }
 
+function camErrorMessage(err) {
+  switch (err && err.name) {
+    case 'NotAllowedError':
+    case 'SecurityError':
+      return 'A câmera está bloqueada pro site. Clique no cadeado ao lado do endereço, mude Câmera pra "Permitir" e clique em Tentar de novo. No Windows, veja também Configurações → Privacidade → Câmera.';
+    case 'NotFoundError':
+    case 'OverconstrainedError':
+      return 'Nenhuma câmera encontrada. Confira se ela está conectada (se for o celular como webcam, abra o app no celular antes).';
+    case 'NotReadableError':
+    case 'AbortError':
+      return 'A câmera está ocupada ou travada por outro programa (OBS, Discord, Zoom, app da webcam…). Feche-os e clique em Tentar de novo.';
+    default:
+      return 'Não consegui abrir a câmera' + (err && err.message ? ` (${err.message})` : '') + '.';
+  }
+}
+
+function showCamStatus(msg) {
+  const box = $('#camError');
+  if (!msg) { box.classList.add('hidden'); box.textContent = ''; return; }
+  box.innerHTML = '';
+  const retry = el('button', { class: 'btn', type: 'button' }, 'Tentar de novo');
+  retry.addEventListener('click', async () => {
+    try { await openCamera(); $('#lobbyPreview').srcObject = state.processor.outputStream; } catch {}
+    await listDevices();
+  });
+  box.append(el('div', {}, el('p', {}, msg), retry));
+  box.classList.remove('hidden');
+}
+
 async function openCamera() {
   const q = $('#qualitySelect').value;
   const [w, h] = qualityDims(q);
   const camId = $('#camSelect').value;
-  const s = await navigator.mediaDevices.getUserMedia({
-    video: { deviceId: camId ? { exact: camId } : undefined, width: { ideal: w }, height: { ideal: h }, frameRate: { ideal: 30 } },
-  });
   if (!state.processor) state.processor = new CameraProcessor({ width: w, height: h });
+  let s;
+  try {
+    s = await navigator.mediaDevices.getUserMedia({
+      video: { deviceId: camId ? { exact: camId } : undefined, width: { ideal: w }, height: { ideal: h }, frameRate: { ideal: 30 } },
+    });
+  } catch (err) {
+    if (err.name === 'NotAllowedError' || err.name === 'SecurityError') { showCamStatus(camErrorMessage(err)); throw err; }
+    // tenta outra câmera / do jeito mais simples (ex.: câmera virtual desconectada)
+    try {
+      s = await navigator.mediaDevices.getUserMedia({ video: true });
+    } catch (err2) {
+      showCamStatus(camErrorMessage(err2));
+      throw err2;
+    }
+  }
+  showCamStatus('');
   state.processor.canvas.width = w;
   state.processor.canvas.height = h;
   state.rawStream?.getTracks().forEach((t) => t.stop());
@@ -75,16 +117,57 @@ async function openCamera() {
   await state.processor.setSource(s);
 }
 
+function micErrorMessage(err) {
+  switch (err && err.name) {
+    case 'NotAllowedError':
+    case 'SecurityError':
+      return 'O microfone está bloqueado pro site. Clique no cadeado ao lado do endereço, libere o Microfone e recarregue a página. No Windows, veja também Configurações → Privacidade → Microfone.';
+    case 'NotFoundError':
+    case 'OverconstrainedError':
+      return 'Nenhum microfone encontrado. Confira se ele está conectado e aparece no Windows (Configurações → Sistema → Som).';
+    case 'NotReadableError':
+    case 'AbortError':
+      return 'O microfone está ocupado ou travado por outro programa. Feche os outros apps que estão usando o mic e clique em "Tentar de novo".';
+    default:
+      return 'Não consegui acessar o microfone' + (err && err.message ? ` (${err.message})` : '') + '.';
+  }
+}
+
+function showMicStatus(msg) {
+  const box = $('#micStatus');
+  if (!msg) { box.classList.add('hidden'); box.textContent = ''; return; }
+  box.textContent = msg + ' ';
+  const retry = el('button', { class: 'btn', type: 'button' }, 'Tentar de novo');
+  retry.addEventListener('click', async () => {
+    try { await openMic(); await listDevices(); } catch {}
+  });
+  box.append(retry);
+  box.classList.remove('hidden');
+}
+
 async function openMic() {
   const micId = $('#micSelect').value;
   const clean = $('#audioMode').value === 'clean';
-  const s = await navigator.mediaDevices.getUserMedia({
-    audio: {
-      deviceId: micId ? { exact: micId } : undefined,
-      echoCancellation: clean, noiseSuppression: clean, autoGainControl: clean,
-      channelCount: clean ? 1 : 2, sampleRate: 48000,
-    },
-  });
+  let s;
+  try {
+    s = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        deviceId: micId ? { exact: micId } : undefined,
+        echoCancellation: clean, noiseSuppression: clean, autoGainControl: clean,
+        channelCount: { ideal: clean ? 1 : 2 },
+      },
+    });
+  } catch (err) {
+    if (err.name === 'NotAllowedError' || err.name === 'SecurityError') { showMicStatus(micErrorMessage(err)); throw err; }
+    // tenta de novo do jeito mais simples possível (qualquer microfone, sem ajustes)
+    try {
+      s = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (err2) {
+      showMicStatus(micErrorMessage(err2));
+      throw err2;
+    }
+  }
+  showMicStatus('');
   const track = s.getAudioTracks()[0];
   track.enabled = state.mic;
   const old = state.audioTrack;
@@ -125,11 +208,19 @@ async function listDevices() {
   const devs = await navigator.mediaDevices.enumerateDevices();
   const fill = (sel, kind, saved) => {
     const cur = sel.value || saved;
+    // marca o dispositivo que está realmente em uso
+    const active = (kind === 'audioinput' ? state.audioTrack : state.rawStream?.getVideoTracks()[0])?.getSettings?.().deviceId;
     sel.innerHTML = '';
-    devs.filter((d) => d.kind === kind).forEach((d, i) => {
+    const list = devs.filter((d) => d.kind === kind && d.deviceId !== '');
+    list.forEach((d, i) => {
       sel.append(el('option', { value: d.deviceId }, d.label || `${kind === 'videoinput' ? 'Câmera' : 'Microfone'} ${i + 1}`));
     });
-    if ([...sel.options].some((o) => o.value === cur)) sel.value = cur;
+    if (!list.length) {
+      // sem permissão o navegador esconde a lista; ainda dá pra usar o padrão
+      sel.append(el('option', { value: '' }, kind === 'videoinput' ? 'Câmera padrão (libere o acesso)' : 'Microfone padrão (libere o acesso)'));
+    }
+    const want = active || cur;
+    if ([...sel.options].some((o) => o.value === want)) sel.value = want;
   };
   fill($('#camSelect'), 'videoinput', store.get('cam', ''));
   fill($('#micSelect'), 'audioinput', store.get('mic', ''));
@@ -299,7 +390,7 @@ async function join(e) {
   store.set('mic', $('#micSelect').value);
 
   if (!state.audioTrack) {
-    try { await openMic(); } catch { $('#joinError').textContent = 'Não consegui acessar o microfone.'; btn.disabled = false; return; }
+    try { await openMic(); } catch (err) { $('#joinError').textContent = micErrorMessage(err); btn.disabled = false; return; }
   }
   state.localStream = new MediaStream([state.processor.videoTrack, state.audioTrack]);
 
@@ -361,14 +452,20 @@ async function init() {
   $('#lobbyPlate').textContent = $('#nameInput').value || 'Você';
   $('#bgSlotLobby').append($('#bgPicker'));
 
+  // pede câmera e microfone de uma vez (um aviso só de permissão)
+  try {
+    const perm = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    perm.getTracks().forEach((t) => t.stop());
+  } catch (err) {
+    console.warn('permissão conjunta falhou, tentando separado', err);
+  }
+
   try {
     await openCamera();
     $('#lobbyPreview').srcObject = state.processor.outputStream;
   } catch (err) {
     console.error(err);
     state.processor = state.processor || new CameraProcessor();
-    $('#camError').textContent = 'Não consegui abrir a câmera. Permita o acesso no navegador e recarregue.';
-    $('#camError').classList.remove('hidden');
   }
   try { await openMic(); } catch (err) { console.warn(err); }
   await listDevices();
@@ -378,7 +475,10 @@ async function init() {
   if (state.bg !== 'none') applyBg(state.bg);
 
   $('#blurRange').addEventListener('input', (e) => (state.processor.blurPx = +e.target.value));
-  $('#camSelect').addEventListener('change', () => { store.set('cam', $('#camSelect').value); openCamera().catch((e) => toast('Erro na câmera: ' + e.message)); });
+  $('#camSelect').addEventListener('change', async () => {
+    store.set('cam', $('#camSelect').value);
+    try { await openCamera(); $('#lobbyPreview').srcObject = state.processor.outputStream; } catch {}
+  });
   $('#qualitySelect').addEventListener('change', () => openCamera().catch((e) => toast('Erro na câmera: ' + e.message)));
   $('#micSelect').addEventListener('change', () => { store.set('mic', $('#micSelect').value); openMic().catch((e) => toast('Erro no mic: ' + e.message)); });
   $('#audioMode').addEventListener('change', () => openMic().catch((e) => toast('Erro no mic: ' + e.message)));

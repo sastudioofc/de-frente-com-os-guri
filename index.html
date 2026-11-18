@@ -33,7 +33,7 @@
       <form id="joinForm" class="join-card" autocomplete="off">
         <h2>Entrar no estúdio</h2>
         <label>Seu nome
-          <input id="nameInput" required maxlength="30" placeholder="Lord Hurley" />
+          <input id="nameInput" required maxlength="30" placeholder="Digite seu nome" />
         </label>
         <label>Sala
           <input id="roomInput" required maxlength="40" placeholder="defrente" />
@@ -61,6 +61,7 @@
           </label>
         </div>
         <div class="meter"><div id="micMeter"></div></div>
+        <p id="micStatus" class="hint mic-status hidden"></p>
         <button class="btn primary big" type="submit" id="joinBtn">Entrar</button>
         <p id="joinError" class="error"></p>
       </form>

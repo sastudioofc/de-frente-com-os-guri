@@ -131,3 +131,7 @@ dialog h3 { color: var(--gold-2); margin-bottom: 12px; }
 .toast { position: fixed; left: 50%; bottom: 100px; transform: translateX(-50%) translateY(20px); background: var(--brown); color: var(--cream);
   padding: 10px 18px; border-radius: 12px; opacity: 0; transition: .25s; pointer-events: none; z-index: 50; border: 1px solid var(--gold); }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+.mic-status { color: #ffb4a3; margin: -4px 0 0; }
+.mic-status button { margin-left: 6px; padding: 3px 10px; font-size: 12px; }
+.tile .overlay p { margin: 0 0 12px; max-width: 460px; line-height: 1.5; }
