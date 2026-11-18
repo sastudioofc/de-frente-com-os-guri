@@ -75,6 +75,11 @@
         <img src="img/logo.svg" alt="" class="brand-logo" />
         <h1>De Frente Com Os Guri</h1>
       </div>
+      <div class="timer" id="timerBox" title="Cronômetro do episódio (todo mundo vê o mesmo)">
+        <span class="rec-dot"></span><span id="timerText">00:00:00</span>
+        <button class="tbtn" id="timerToggle" title="Iniciar / pausar">▶</button>
+        <button class="tbtn" id="timerReset" title="Zerar">↺</button>
+      </div>
       <div class="room-meta">
         <span class="pill live">● NA CALL</span>
         <span class="pill" id="roomLabel"></span>
@@ -87,7 +92,11 @@
     <nav class="controls">
       <button class="ctl" id="micBtn" title="Microfone (M)"><span class="ico">🎙️</span><span>Mic</span></button>
       <button class="ctl" id="camBtn" title="Câmera (V)"><span class="ico">📷</span><span>Câmera</span></button>
-      <button class="ctl" id="bgBtn" title="Fundo (B)"><span class="ico">🖼️</span><span>Fundo</span></button>
+      <button class="ctl" id="screenBtn" title="Compartilhar tela (T)"><span class="ico">🖥️</span><span>Tela</span></button>
+      <button class="ctl" id="bgBtn" title="Fundo e imagem (B)"><span class="ico">🖼️</span><span>Fundo</span></button>
+      <button class="ctl" id="stageBtn" title="Modo palco (P)"><span class="ico">🎭</span><span>Palco</span></button>
+      <button class="ctl" id="agendaBtn" title="Pauta"><span class="ico">📋</span><span>Pauta</span></button>
+      <button class="ctl" id="chatBtn" title="Chat (C)"><span class="ico">💬</span><span>Chat</span><b class="badge hidden" id="chatBadge">0</b></button>
       <button class="ctl" id="inviteBtn" title="Copiar convite"><span class="ico">🔗</span><span>Convite</span></button>
       <button class="ctl" id="settingsBtn" title="Dispositivos"><span class="ico">⚙️</span><span>Ajustes</span></button>
       <button class="ctl danger" id="leaveBtn" title="Sair"><span class="ico">⏻</span><span>Sair</span></button>
@@ -96,8 +105,28 @@
 
   <!-- ============ PAINÉIS ============ -->
   <aside id="bgDrawer" class="drawer hidden">
-    <div class="drawer-head"><h3>Fundo</h3><button class="x" data-close>✕</button></div>
+    <div class="drawer-head"><h3>Fundo e imagem</h3><button class="x" data-close>✕</button></div>
     <div id="bgSlotDrawer"></div>
+  </aside>
+
+  <aside id="agendaDrawer" class="drawer hidden">
+    <div class="drawer-head"><h3>📋 Pauta do episódio</h3><button class="x" data-close>✕</button></div>
+    <p class="hint">Todo mundo vê e pode editar. Clique no tópico pra marcar como falado.</p>
+    <form id="agendaForm" class="inline-form" autocomplete="off">
+      <input id="agendaInput" maxlength="140" placeholder="Novo tópico…" />
+      <button class="btn primary" type="submit">+</button>
+    </form>
+    <ol id="agendaList" class="agenda"></ol>
+    <p class="hint" id="agendaProgress"></p>
+  </aside>
+
+  <aside id="chatDrawer" class="drawer hidden chat-drawer">
+    <div class="drawer-head"><h3>💬 Chat</h3><button class="x" data-close>✕</button></div>
+    <div id="chatList" class="chat-list"><p class="hint">As mensagens aparecem aqui. Links ficam clicáveis.</p></div>
+    <form id="chatForm" class="inline-form" autocomplete="off">
+      <input id="chatInput" maxlength="1000" placeholder="Mensagem…" />
+      <button class="btn primary" type="submit">➤</button>
+    </form>
   </aside>
 
   <div id="bgPicker" class="bg-picker">
@@ -105,6 +134,14 @@
     <div id="bgGrid" class="bg-grid"></div>
     <label class="slider hidden" id="blurRow">Intensidade do desfoque
       <input type="range" id="blurRange" min="4" max="30" value="14" />
+    </label>
+    <div class="bg-title light-title">Imagem</div>
+    <label class="check"><input type="checkbox" id="autoLight" checked /> Correção de luz automática</label>
+    <label class="slider">Brilho <span id="brightVal">100%</span>
+      <input type="range" id="brightRange" min="60" max="180" value="100" />
+    </label>
+    <label class="slider">Contraste <span id="contrastVal">100%</span>
+      <input type="range" id="contrastRange" min="70" max="150" value="100" />
     </label>
     <p class="hint" id="bgStatus"></p>
   </div>

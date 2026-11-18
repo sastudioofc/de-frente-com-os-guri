@@ -8,7 +8,8 @@ export class P2PRoom extends EventTarget {
   constructor({ roomId, password, name, localStream, maxUsers }) {
     super();
     this.localStream = localStream;
-    this.peers = new Map(); // userId -> { info: {name, mic, cam}, stream }
+    this.screenStream = null;
+    this.peers = new Map(); // userId -> { info: {name, mic, cam, screen}, stream, screen }
     const iceServers = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }];
 
     this.room = joinRoom(
@@ -24,13 +25,14 @@ export class P2PRoom extends EventTarget {
       roomId,
     );
 
-    this.profile = this.room.makeUserState('profile', { name: 'Guri', mic: true, cam: true });
-    this.profile.set({ name, mic: true, cam: true });
+    this.profile = this.room.makeUserState('profile', { name: 'Guri', mic: true, cam: true, screen: false });
+    this.profile.set({ name, mic: true, cam: true, screen: false });
 
-    this.room.addStream(localStream);
+    this.room.addStream(localStream, { metadata: { type: 'cam' } });
     this.room.onPeerJoin(({ userId }) => {
       this._ensure(userId);
-      this.room.addStream(this.localStream, { target: userId });
+      this.room.addStream(this.localStream, { target: userId, metadata: { type: 'cam' } });
+      if (this.screenStream) this.room.addStream(this.screenStream, { target: userId, metadata: { type: 'screen' } });
       this._emit('peer-update', { id: userId });
     });
     this.room.onPeerLeave(({ userId }) => {
@@ -38,14 +40,24 @@ export class P2PRoom extends EventTarget {
       this.peers.delete(userId);
       this._emit('peer-left', { id: userId });
     });
-    this.room.onPeerStream((stream, { userId }) => {
-      this._ensure(userId).stream = stream;
+    this.room.onPeerStream((stream, { userId, metadata }) => {
+      const p = this._ensure(userId);
+      if (metadata && metadata.type === 'screen') {
+        p.screen = stream;
+        stream.getVideoTracks()[0]?.addEventListener('ended', () => {
+          if (p.screen === stream) { p.screen = null; this._emit('peer-update', { id: userId }); }
+        });
+      } else {
+        p.stream = stream;
+      }
       this._emit('peer-update', { id: userId });
     });
     this.profile.onChange(
       (val, { userId, self, removed }) => {
         if (self || removed || !val) return;
-        Object.assign(this._ensure(userId).info, val);
+        const p = this._ensure(userId);
+        Object.assign(p.info, val);
+        if (val.screen === false) p.screen = null;
         this._emit('peer-update', { id: userId });
       },
       { replay: true },
@@ -56,7 +68,7 @@ export class P2PRoom extends EventTarget {
   _ensure(id) {
     if (!this.peers.has(id)) {
       const known = this.profile?.get?.(id);
-      this.peers.set(id, { info: { name: '…', mic: true, cam: true, ...(known || {}) }, stream: null });
+      this.peers.set(id, { info: { name: '…', mic: true, cam: true, screen: false, ...(known || {}) }, stream: null, screen: null });
     }
     return this.peers.get(id);
   }
@@ -69,18 +81,44 @@ export class P2PRoom extends EventTarget {
     this.profile.set((prev) => ({ ...prev, ...patch }));
   }
 
+  // ---- compartilhar tela ----
+  async startScreen(stream) {
+    this.screenStream = stream;
+    await this.room.addStream(stream, { metadata: { type: 'screen' } });
+    this.setState({ screen: true });
+  }
+  stopScreen() {
+    if (!this.screenStream) return;
+    try { this.room.removeStream(this.screenStream); } catch {}
+    this.screenStream.getTracks().forEach((t) => t.stop());
+    this.screenStream = null;
+    this.setState({ screen: false });
+  }
+
+  // ---- estado compartilhado / mensagens (pauta, cronômetro, chat) ----
+  makeState(name, initial) { return this.room.makeState(name, initial); }
+  makeAction(name) { return this.room.makeAction(name); }
+
+  // conexões WebRTC por pessoa (pra medir qualidade)
+  connections() {
+    const out = new Map();
+    for (const p of Object.values(this.room.getPeers())) if (p.connection) out.set(p.userId, p.connection);
+    return out;
+  }
+
   async replaceAudioTrack(oldTrack, newTrack) {
     if (oldTrack && newTrack) await this.room.replaceTrack(oldTrack, newTrack);
   }
 
-  async setMaxBitrate(kbps) {
-    for (const p of Object.values(this.room.getPeers())) {
-      const pc = p.connection;
-      if (!pc) continue;
-      for (const sender of pc.getSenders()) {
-        if (sender.track?.kind !== 'video') continue;
+  async setMaxBitrate(kbps, pc) {
+    const pcs = pc ? [pc] : [...this.connections().values()];
+    const screenTrack = this.screenStream?.getVideoTracks()[0];
+    for (const c of pcs) {
+      for (const sender of c.getSenders()) {
+        if (sender.track?.kind !== 'video' || sender.track === screenTrack) continue;
         const params = sender.getParameters();
         if (!params.encodings || !params.encodings.length) params.encodings = [{}];
+        if (params.encodings[0].maxBitrate === kbps * 1000) continue;
         params.encodings[0].maxBitrate = kbps * 1000;
         try { await sender.setParameters(params); } catch {}
       }
@@ -88,6 +126,7 @@ export class P2PRoom extends EventTarget {
   }
 
   leave() {
+    this.stopScreen();
     return this.room.leave();
   }
 }

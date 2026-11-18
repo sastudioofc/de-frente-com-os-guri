@@ -5,6 +5,13 @@ Site de chamada de vídeo do programa: todo mundo entra pelo navegador com a câ
 **O que tem:**
 - Chamada de vídeo e áudio com até 6 pessoas (Chrome, Edge, Firefox; no celular também funciona)
 - **Fundos**: desfoque, 4 prontos (Estúdio, Templo, Neon, Madeira) ou **qualquer imagem sua**. O recorte é feito com IA no computador de cada um.
+- **Compartilhar tela** (tecla **T**), com o áudio da aba junto, pra mostrar trailer, notícia ou print
+- **Modo palco** (tecla **P**): quem está falando aparece grande e o resto fica embaixo. Dá pra fixar alguém no 📌 (ou com dois cliques). A tela compartilhada vai pro palco sozinha.
+- **Pauta compartilhada**: lista de tópicos que todos veem e vão marcando como falado
+- **Cronômetro do episódio**: o mesmo tempo pra todo mundo, e qualquer um pode iniciar, pausar ou zerar
+- **Chat** (tecla **C**), com links clicáveis e aviso de mensagem nova
+- **Correção de luz automática**, mais controles de brilho e contraste (no painel Fundo)
+- **Sinal de conexão** em cada pessoa (verde, amarelo ou vermelho), com aviso de "internet instável"; a qualidade de quem está com a internet ruim baixa sozinha pra não travar
 - Borda dourada em quem está falando
 - Mutar o mic (tecla **M**), desligar a câmera (**V**) e abrir o painel de fundo (**B**)
 - Troca de câmera e de microfone, qualidade de 480p, 720p ou 1080p e modo "som cru" pra mic bom
@@ -46,6 +53,7 @@ Dá pra editar direto no site do GitHub: abra o arquivo, clique no lápis e depo
 index.html             tela de entrada e sala
 js/app.js              interface, dispositivos, controles
 js/p2p.js              conexão entre participantes (Trystero)
+js/extras.js           pauta, cronômetro e chat
 js/background.js       recorte com IA e troca de fundo (MediaPipe)
 js/config.js           configurações
 vendor/                bibliotecas (Trystero e MediaPipe), já embutidas

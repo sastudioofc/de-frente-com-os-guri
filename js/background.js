@@ -45,6 +45,57 @@ export class CameraProcessor {
     this.lastTs = -1;
     this.busy = false;
     this.nextAllowed = 0;
+
+    // correção de luz
+    this.autoLight = true;
+    this.brightness = 1; // manual (multiplica o automático)
+    this.contrast = 1;
+    this.autoGain = 1;
+    this.lumaCanvas = document.createElement('canvas');
+    this.lumaCanvas.width = 32;
+    this.lumaCanvas.height = 18;
+    this.lumaCtx = this.lumaCanvas.getContext('2d', { willReadFrequently: true });
+    this.lastLuma = 0;
+  }
+
+  setLight({ auto, brightness, contrast } = {}) {
+    if (typeof auto === 'boolean') { this.autoLight = auto; if (!auto) this.autoGain = 1; }
+    if (typeof brightness === 'number') this.brightness = brightness;
+    if (typeof contrast === 'number') this.contrast = contrast;
+  }
+
+  // Mede o brilho médio do rosto/centro e ajusta devagar pra imagem não ficar escura nem estourada.
+  _measureLight(v) {
+    const now = performance.now();
+    if (!this.autoLight || now - this.lastLuma < 400) return;
+    this.lastLuma = now;
+    const c = this.lumaCtx;
+    const vw = v.videoWidth, vh = v.videoHeight;
+    c.drawImage(v, vw * 0.2, vh * 0.1, vw * 0.6, vh * 0.8, 0, 0, 32, 18);
+    const d = c.getImageData(0, 0, 32, 18).data;
+    let sum = 0;
+    for (let i = 0; i < d.length; i += 4) sum += 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
+    const luma = sum / (d.length / 4) / 255; // 0..1
+    const target = 0.48;
+    const want = Math.min(2.2, Math.max(0.85, target / Math.max(luma, 0.05)));
+    this.autoGain += (want - this.autoGain) * 0.25;
+  }
+
+  _filter(extra = '') {
+    const b = this.brightness * (this.autoLight ? this.autoGain : 1);
+    const c = this.contrast * (this.autoLight && this.autoGain > 1.15 ? 1.06 : 1);
+    const parts = [];
+    if (Math.abs(b - 1) > 0.02) parts.push(`brightness(${b.toFixed(3)})`);
+    if (Math.abs(c - 1) > 0.02) parts.push(`contrast(${c.toFixed(3)})`);
+    if (extra) parts.push(extra);
+    return parts.length ? parts.join(' ') : 'none';
+  }
+
+  _drawVideo(ctx, W, H, extra = '') {
+    const v = this.video;
+    ctx.filter = this._filter(extra);
+    this._drawCover(ctx, v, v.videoWidth, v.videoHeight, W, H);
+    ctx.filter = 'none';
   }
 
   get videoTrack() {
@@ -123,9 +174,10 @@ export class CameraProcessor {
       const W = this.canvas.width, H = this.canvas.height;
       const ctx = this.ctx;
       const vw = v.videoWidth, vh = v.videoHeight;
+      this._measureLight(v);
 
       if (this.mode === 'none' || !this.segmenter) {
-        this._drawCover(ctx, v, vw, vh, W, H);
+        this._drawVideo(ctx, W, H);
         return;
       }
 
@@ -134,7 +186,7 @@ export class CameraProcessor {
       const small = (this.smallCanvas ??= document.createElement('canvas'));
       if (small.width !== SW || small.height !== SH) { small.width = SW; small.height = SH; }
       const sctx = (this.smallCtx ??= small.getContext('2d', { willReadFrequently: false }));
-      this._drawCover(sctx, v, vw, vh, SW, SH);
+      this._drawVideo(sctx, SW, SH);
 
       let ts = t0;
       if (ts <= this.lastTs) ts = this.lastTs + 1;
@@ -144,7 +196,7 @@ export class CameraProcessor {
       const masks = result.confidenceMasks || [];
       const mask = masks.length > 1 ? masks[masks.length - 1] : masks[0];
       if (!mask) {
-        this._drawCover(ctx, v, vw, vh, W, H);
+        this._drawVideo(ctx, W, H);
         result.close?.();
         return;
       }
@@ -179,7 +231,7 @@ export class CameraProcessor {
       pctx.imageSmoothingQuality = 'high';
       pctx.drawImage(this.maskCanvas, 0, 0, W, H);
       pctx.globalCompositeOperation = 'source-in';
-      this._drawCover(pctx, v, vw, vh, W, H);
+      this._drawVideo(pctx, W, H);
       pctx.globalCompositeOperation = 'source-over';
 
       // 3) fundo
@@ -190,9 +242,7 @@ export class CameraProcessor {
         const bc = (this.blurCanvas ??= document.createElement('canvas'));
         if (bc.width !== bw || bc.height !== bh) { bc.width = bw; bc.height = bh; }
         const bctx = (this.blurCtx ??= bc.getContext('2d'));
-        bctx.filter = 'blur(1.5px)';
-        this._drawCover(bctx, v, vw, vh, bw, bh);
-        bctx.filter = 'none';
+        this._drawVideo(bctx, bw, bh, 'blur(1.5px)');
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(bc, 0, 0, W, H);

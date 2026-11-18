@@ -1,5 +1,6 @@
 import { P2PRoom } from './p2p.js';
 import { CONFIG } from './config.js';
+import { setupExtras } from './extras.js';
 import { CameraProcessor } from './background.js';
 
 const $ = (s) => document.querySelector(s);
@@ -29,6 +30,10 @@ const state = {
   name: '',
   room: '',
   bg: store.get('bg', 'none'),
+  stage: false,
+  pinned: null, // id do tile fixado no palco
+  speaker: null, // quem está falando mais alto
+  extras: null,
   customBgs: store.get('customBgs', []), // [{id, src(dataURL)}]
 };
 
@@ -301,14 +306,78 @@ function tileFor(id, { local = false } = {}) {
   if (t) return t;
   t = el('div', { class: 'tile' + (local ? ' local' : ''), id: 'tile-' + id },
     el('video', { autoplay: '', playsinline: '' }),
-    el('div', { class: 'plate' }, el('span', { class: 'name' }), el('i', { class: 'muted-ico', title: 'Mic desligado' }, '🔇')),
+    el('div', { class: 'plate' }, el('span', { class: 'name' }), el('i', { class: 'muted-ico', title: 'Mic desligado' }, '🔇'),
+      el('span', { class: 'net hidden', title: 'Qualidade da conexão' }, el('i'), el('i'), el('i'))),
     el('div', { class: 'overlay cam-off hidden' }, el('div', { class: 'avatar' })),
-    el('div', { class: 'status hidden' }));
+    el('div', { class: 'status hidden' }),
+    el('div', { class: 'net-warn hidden' }, '⚠ Internet instável'),
+    el('button', { class: 'pin', type: 'button', title: 'Fixar no palco' }, '📌'));
   const v = t.querySelector('video');
   if (local) v.muted = true;
+  t.querySelector('.pin').addEventListener('click', (e) => { e.stopPropagation(); togglePin(t.id); });
+  t.addEventListener('dblclick', () => togglePin(t.id));
   $('#grid').append(t);
   layout();
   return t;
+}
+
+function screenTile(id, name, stream, { local = false } = {}) {
+  const tid = 'tile-screen-' + id;
+  let t = document.getElementById(tid);
+  const isNew = !t;
+  if (!t) {
+    t = el('div', { class: 'tile screen', id: tid },
+      el('video', { autoplay: '', playsinline: '' }),
+      el('div', { class: 'plate' }, el('span', { class: 'name' })),
+      el('button', { class: 'pin', type: 'button', title: 'Fixar no palco' }, '📌'));
+    if (local) t.querySelector('video').muted = true;
+    t.querySelector('.pin').addEventListener('click', (e) => { e.stopPropagation(); togglePin(tid); });
+    t.addEventListener('dblclick', () => togglePin(tid));
+    $('#grid').append(t);
+  }
+  const v = t.querySelector('video');
+  if (v.srcObject !== stream) { v.srcObject = stream; v.play().catch(() => clickToPlay(v)); }
+  t.querySelector('.name').textContent = '🖥️ Tela de ' + name;
+  if (isNew) {
+    layout();
+    // tela nova vai pro palco automaticamente
+    setStage(true);
+    toast(local ? 'Você está compartilhando a tela' : `${name} está compartilhando a tela`);
+  }
+  updateStage();
+  return t;
+}
+
+function removeScreenTile(id) {
+  const t = document.getElementById('tile-screen-' + id);
+  if (!t) return;
+  if (state.pinned === t.id) state.pinned = null;
+  t.remove();
+  layout();
+  updateStage();
+}
+
+// ---------------- palco ----------------
+function setStage(on) {
+  state.stage = on;
+  $('#grid').classList.toggle('stage', on);
+  $('#stageBtn').classList.toggle('on', on);
+  updateStage();
+}
+function togglePin(tid) {
+  state.pinned = state.pinned === tid ? null : tid;
+  if (state.pinned && !state.stage) setStage(true);
+  updateStage();
+}
+function updateStage() {
+  const tiles = [...$('#grid').children];
+  tiles.forEach((t) => t.classList.toggle('pinned', t.id === state.pinned));
+  if (!state.stage) { tiles.forEach((t) => t.classList.remove('main')); return; }
+  let main = state.pinned && document.getElementById(state.pinned);
+  if (!main) main = tiles.filter((t) => t.classList.contains('screen')).pop();
+  if (!main && state.speaker) main = document.getElementById('tile-' + state.speaker);
+  if (!main) main = tiles.find((t) => t.id !== 'tile-me') || tiles[0];
+  tiles.forEach((t) => t.classList.toggle('main', t === main));
 }
 
 function updateTile(id, { name, mic, cam, stream, connection }) {
@@ -336,14 +405,18 @@ function clickToPlay(v) {
 
 function layout() {
   const n = $('#grid').children.length;
+  const people = $('#grid').querySelectorAll('.tile:not(.screen)').length;
   $('#grid').dataset.count = n;
-  $('#countLabel').textContent = `${n} ${n === 1 ? 'guri' : 'guris'}`;
+  $('#countLabel').textContent = `${people} ${people === 1 ? 'guri' : 'guris'}`;
 }
 
 function refreshPeer(id) {
   const p = state.mesh.peers.get(id);
   if (!p) return;
   updateTile(id, { name: p.info.name, mic: p.info.mic, cam: p.info.cam, stream: p.stream || undefined, connection: p.stream ? 'connected' : 'connecting' });
+  if (p.screen && p.info.screen !== false) screenTile(id, p.info.name, p.screen);
+  else removeScreenTile(id);
+  updateStage();
 }
 
 function setupSpeakingDetection() {
@@ -351,6 +424,7 @@ function setupSpeakingDetection() {
   const ctx = new AudioContext();
   const analysers = new Map();
   const buf = new Uint8Array(256);
+  let loudest = null, cand = null, candSince = 0;
   setInterval(() => {
     const entries = [['me', state.localStream], ...[...state.mesh.peers].map(([id, p]) => [id, p.stream])];
     for (const [id, stream] of entries) {
@@ -371,11 +445,110 @@ function setupSpeakingDetection() {
       let peak = 0;
       for (const v of buf) peak = Math.max(peak, Math.abs(v - 128));
       a.level = a.level * 0.6 + peak * 0.4;
-      document.getElementById('tile-' + id)?.classList.toggle('speaking', a.level > 10 && track.enabled);
+      const speaking = a.level > 10 && track.enabled;
+      document.getElementById('tile-' + id)?.classList.toggle('speaking', speaking);
+      if (speaking && id !== 'me' && (!loudest || a.level > loudest.level)) loudest = { id, level: a.level };
     }
+    // palco: troca pra quem está falando depois de ~1s falando mais alto (evita ficar pulando)
+    const now = performance.now();
+    if (loudest && loudest.id !== state.speaker) {
+      if (cand !== loudest.id) { cand = loudest.id; candSince = now; }
+      else if (now - candSince > 1000) { state.speaker = loudest.id; updateStage(); }
+    } else cand = null;
+    loudest = null;
     if (ctx.state === 'suspended') ctx.resume().catch(() => {});
   }, 120);
 }
+
+// ---------------- compartilhar tela ----------------
+async function toggleScreen() {
+  if (state.mesh.screenStream) return stopScreen();
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 30 } }, audio: true });
+  } catch (err) {
+    if (err.name !== 'NotAllowedError') toast('Não deu pra compartilhar a tela: ' + err.message, 4000);
+    return;
+  }
+  const vt = stream.getVideoTracks()[0];
+  if (vt) vt.contentHint = 'detail';
+  vt?.addEventListener('ended', stopScreen); // botão "parar de compartilhar" do navegador
+  await state.mesh.startScreen(stream);
+  $('#screenBtn').classList.add('on');
+  screenTile('me', 'você', stream, { local: true });
+}
+function stopScreen() {
+  if (!state.mesh?.screenStream) return;
+  state.mesh.stopScreen();
+  $('#screenBtn').classList.remove('on');
+  removeScreenTile('me');
+}
+
+// ---------------- qualidade da conexão ----------------
+function setNet(id, q) {
+  const t = document.getElementById('tile-' + id);
+  if (!t) return;
+  const n = t.querySelector('.net');
+  n.classList.remove('hidden', 'good', 'ok', 'bad');
+  n.classList.add(q);
+  n.title = { good: 'Conexão boa', ok: 'Conexão razoável', bad: 'Conexão ruim' }[q];
+  t.querySelector('.net-warn').classList.toggle('hidden', q !== 'bad');
+}
+
+function startConnectionMonitor(baseKbps) {
+  const prev = new Map(); // userId -> { lost, recv }
+  const caps = new Map(); // pc -> kbps aplicado
+  setInterval(async () => {
+    let myWorst = 'good';
+    const rank = { good: 0, ok: 1, bad: 2 };
+    for (const [userId, pc] of state.mesh.connections()) {
+      let stats;
+      try { stats = await pc.getStats(); } catch { continue; }
+      let rtt = 0, avail = 0, lost = 0, recv = 0, upLoss = 0;
+      stats.forEach((r) => {
+        if (r.type === 'candidate-pair' && r.state === 'succeeded' && (r.nominated || r.selected)) {
+          rtt = Math.max(rtt, r.currentRoundTripTime || 0);
+          if (r.availableOutgoingBitrate) avail = r.availableOutgoingBitrate;
+        }
+        if (r.type === 'inbound-rtp' && r.kind === 'video') { lost += r.packetsLost || 0; recv += r.packetsReceived || 0; }
+        if (r.type === 'remote-inbound-rtp' && r.kind === 'video') upLoss = Math.max(upLoss, r.fractionLost || 0);
+      });
+      const p = prev.get(userId) || { lost, recv };
+      const dl = Math.max(0, lost - p.lost), dr = Math.max(0, recv - p.recv);
+      prev.set(userId, { lost, recv });
+      const loss = dl + dr > 0 ? dl / (dl + dr) : 0;
+      const q = rtt > 0.6 || loss > 0.08 ? 'bad' : rtt > 0.28 || loss > 0.02 ? 'ok' : 'good';
+      setNet(userId, q);
+      const up = rtt > 0.6 || upLoss > 0.08 ? 'bad' : rtt > 0.28 || upLoss > 0.02 ? 'ok' : 'good';
+      if (rank[up] > rank[myWorst]) myWorst = up;
+
+      // baixa a qualidade sozinho quando a internet aperta (e sobe de novo quando melhora)
+      let cap = baseKbps;
+      if (avail) cap = Math.min(cap, (avail / 1000) * 0.8);
+      if (upLoss > 0.1) cap = Math.min(cap, (caps.get(pc) || baseKbps) * 0.7);
+      cap = Math.round(Math.max(250, cap));
+      const cur = caps.get(pc) || baseKbps;
+      if (Math.abs(cap - cur) / cur > 0.15 || !caps.has(pc)) {
+        caps.set(pc, cap);
+        state.mesh.setMaxBitrate(cap, pc);
+      }
+    }
+    if (state.mesh.connections().size) setNet('me', myWorst);
+  }, 2000);
+}
+
+function openDrawer(id) {
+  const d = document.getElementById(id);
+  const willOpen = d.classList.contains('hidden');
+  document.querySelectorAll('.drawer').forEach((x) => x.classList.add('hidden'));
+  if (willOpen) d.classList.remove('hidden');
+  ['bgDrawer:bgBtn', 'agendaDrawer:agendaBtn', 'chatDrawer:chatBtn'].forEach((pair) => {
+    const [dr, bt] = pair.split(':');
+    $('#' + bt).classList.toggle('on', !document.getElementById(dr).classList.contains('hidden'));
+  });
+  if (id === 'chatDrawer' && willOpen) state.extras?.onChatOpened();
+}
+const isDrawerOpen = (id) => !document.getElementById(id).classList.contains('hidden');
 
 async function join(e) {
   e.preventDefault();
@@ -422,9 +595,8 @@ async function join(e) {
 
   updateTile('me', { name: state.name + ' (você)', mic: state.mic, cam: state.cam, stream: state.localStream });
   setupSpeakingDetection();
-  const bitrate = { 1080: 4000, 720: 2500, 480: 1000 }[$('#qualitySelect').value];
-  setTimeout(() => state.mesh.setMaxBitrate(bitrate), 3000);
-  setInterval(() => state.mesh.setMaxBitrate(bitrate), 15000);
+  startConnectionMonitor({ 1080: 4000, 720: 2500, 480: 1000 }[$('#qualitySelect').value]);
+  state.extras = setupExtras({ mesh: state.mesh, myName: () => state.name, toast, openDrawer, isDrawerOpen });
 }
 
 function setMic(on) {
@@ -475,6 +647,20 @@ async function init() {
   if (state.bg !== 'none') applyBg(state.bg);
 
   $('#blurRange').addEventListener('input', (e) => (state.processor.blurPx = +e.target.value));
+  // correção de luz
+  const light = store.get('light', { auto: true, b: 100, c: 100 });
+  const applyLight = () => {
+    const auto = $('#autoLight').checked, b = +$('#brightRange').value, c = +$('#contrastRange').value;
+    $('#brightVal').textContent = b + '%';
+    $('#contrastVal').textContent = c + '%';
+    state.processor.setLight({ auto, brightness: b / 100, contrast: c / 100 });
+    store.set('light', { auto, b, c });
+  };
+  $('#autoLight').checked = light.auto;
+  $('#brightRange').value = light.b;
+  $('#contrastRange').value = light.c;
+  ['autoLight', 'brightRange', 'contrastRange'].forEach((id) => $('#' + id).addEventListener('input', applyLight));
+  applyLight();
   $('#camSelect').addEventListener('change', async () => {
     store.set('cam', $('#camSelect').value);
     try { await openCamera(); $('#lobbyPreview').srcObject = state.processor.outputStream; } catch {}
@@ -486,7 +672,12 @@ async function init() {
 
   $('#micBtn').addEventListener('click', () => setMic(!state.mic));
   $('#camBtn').addEventListener('click', () => setCam(!state.cam));
-  $('#bgBtn').addEventListener('click', () => $('#bgDrawer').classList.toggle('hidden'));
+  $('#bgBtn').addEventListener('click', () => openDrawer('bgDrawer'));
+  $('#agendaBtn').addEventListener('click', () => openDrawer('agendaDrawer'));
+  $('#chatBtn').addEventListener('click', () => openDrawer('chatDrawer'));
+  $('#screenBtn').addEventListener('click', toggleScreen);
+  $('#stageBtn').addEventListener('click', () => setStage(!state.stage));
+  if (!navigator.mediaDevices.getDisplayMedia) $('#screenBtn').classList.add('hidden'); // celular não compartilha tela
   $('#inviteBtn').addEventListener('click', () => {
     const pwd = $('#pwdInput').value;
     const url = `${location.origin}${location.pathname}?sala=${encodeURIComponent(state.room)}` + (pwd ? `#senha=${encodeURIComponent(pwd)}` : '');
@@ -499,13 +690,17 @@ async function init() {
   });
   document.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => {
     b.closest('dialog')?.close();
-    b.closest('.drawer')?.classList.add('hidden');
+    const d = b.closest('.drawer');
+    if (d) { d.classList.add('hidden'); ['bgBtn', 'agendaBtn', 'chatBtn'].forEach((id) => $('#' + id).classList.remove('on')); }
   }));
   document.addEventListener('keydown', (e) => {
     if ($('#room').classList.contains('hidden') || e.target.matches('input, select, textarea')) return;
     if (e.key === 'm' || e.key === 'M') setMic(!state.mic);
     if (e.key === 'v' || e.key === 'V') setCam(!state.cam);
-    if (e.key === 'b' || e.key === 'B') $('#bgDrawer').classList.toggle('hidden');
+    if (e.key === 'b' || e.key === 'B') openDrawer('bgDrawer');
+    if (e.key === 'c' || e.key === 'C') openDrawer('chatDrawer');
+    if (e.key === 't' || e.key === 'T') toggleScreen();
+    if (e.key === 'p' || e.key === 'P') setStage(!state.stage);
   });
 }
 
