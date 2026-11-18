@@ -25,6 +25,10 @@ jobs:
       - name: Baixar modelo de IA do recorte de fundo
         continue-on-error: true
         run: curl -sSfL -o models/selfie_segmenter.tflite https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/latest/selfie_segmenter.tflite
+      - name: Versionar arquivos (evita misturar versão nova com cache antigo)
+        run: |
+          V="${GITHUB_SHA::8}"
+          grep -rl "__V__" --include=*.html --include=*.js . | xargs sed -i "s/__V__/$V/g"
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

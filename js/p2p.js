@@ -2,7 +2,7 @@
 // O Trystero usa relays públicos do Nostr só pra apresentar um navegador pro outro;
 // o vídeo e o áudio vão direto entre vocês (WebRTC). Com senha, até a apresentação vai criptografada.
 import { joinRoom } from '../vendor/trystero.mjs';
-import { CONFIG } from './config.js';
+import { CONFIG } from './config.js?v=__V__';
 
 export class P2PRoom extends EventTarget {
   constructor({ roomId, password, name, localStream, maxUsers }) {

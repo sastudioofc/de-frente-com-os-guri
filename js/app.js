@@ -1,7 +1,7 @@
-import { P2PRoom } from './p2p.js';
-import { CONFIG } from './config.js';
-import { setupExtras } from './extras.js';
-import { CameraProcessor } from './background.js';
+import { P2PRoom } from './p2p.js?v=__V__';
+import { CONFIG } from './config.js?v=__V__';
+import { setupExtras } from './extras.js?v=__V__';
+import { CameraProcessor } from './background.js?v=__V__';
 
 const $ = (s) => document.querySelector(s);
 const params = new URLSearchParams(location.search);
