@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Estúdio · De Frente Com Os Guri</title>
+  <link rel="icon" href="img/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <!-- ============ LOBBY ============ -->
+  <main id="lobby" class="screen">
+    <header class="brand">
+      <img src="img/logo.svg" alt="" class="brand-logo" />
+      <div>
+        <h1>De Frente Com Os Guri</h1>
+        <p class="tag">Estúdio · podcast, teoria com humor</p>
+      </div>
+    </header>
+
+    <section class="lobby-grid">
+      <div class="preview-card">
+        <div class="tile local">
+          <video id="lobbyPreview" autoplay muted playsinline></video>
+          <div class="plate"><span id="lobbyPlate">Você</span></div>
+          <div id="camError" class="overlay hidden"></div>
+        </div>
+        <div id="bgSlotLobby"></div>
+      </div>
+
+      <form id="joinForm" class="join-card" autocomplete="off">
+        <h2>Entrar no estúdio</h2>
+        <label>Seu nome
+          <input id="nameInput" required maxlength="30" placeholder="Lord Hurley" />
+        </label>
+        <label>Sala
+          <input id="roomInput" required maxlength="40" placeholder="defrente" />
+        </label>
+        <label id="pwdLabel">Senha da sala <small>(opcional, todo mundo usa a mesma)</small>
+          <input id="pwdInput" type="password" maxlength="60" autocomplete="off" />
+        </label>
+        <div class="row2">
+          <label>Câmera <select id="camSelect"></select></label>
+          <label>Microfone <select id="micSelect"></select></label>
+        </div>
+        <div class="row2">
+          <label>Qualidade
+            <select id="qualitySelect">
+              <option value="720">720p (recomendado)</option>
+              <option value="1080">1080p (internet boa)</option>
+              <option value="480">480p (internet fraca)</option>
+            </select>
+          </label>
+          <label>Áudio
+            <select id="audioMode">
+              <option value="clean">Com redução de ruído</option>
+              <option value="raw">Som cru (mic bom + fone)</option>
+            </select>
+          </label>
+        </div>
+        <div class="meter"><div id="micMeter"></div></div>
+        <button class="btn primary big" type="submit" id="joinBtn">Entrar</button>
+        <p id="joinError" class="error"></p>
+      </form>
+    </section>
+  </main>
+
+  <!-- ============ SALA ============ -->
+  <main id="room" class="screen hidden">
+    <header class="room-top">
+      <div class="brand small">
+        <img src="img/logo.svg" alt="" class="brand-logo" />
+        <h1>De Frente Com Os Guri</h1>
+      </div>
+      <div class="room-meta">
+        <span class="pill live">● NA CALL</span>
+        <span class="pill" id="roomLabel"></span>
+        <span class="pill" id="countLabel"></span>
+      </div>
+    </header>
+
+    <section id="grid" class="grid"></section>
+
+    <nav class="controls">
+      <button class="ctl" id="micBtn" title="Microfone (M)"><span class="ico">🎙️</span><span>Mic</span></button>
+      <button class="ctl" id="camBtn" title="Câmera (V)"><span class="ico">📷</span><span>Câmera</span></button>
+      <button class="ctl" id="bgBtn" title="Fundo (B)"><span class="ico">🖼️</span><span>Fundo</span></button>
+      <button class="ctl" id="inviteBtn" title="Copiar convite"><span class="ico">🔗</span><span>Convite</span></button>
+      <button class="ctl" id="settingsBtn" title="Dispositivos"><span class="ico">⚙️</span><span>Ajustes</span></button>
+      <button class="ctl danger" id="leaveBtn" title="Sair"><span class="ico">⏻</span><span>Sair</span></button>
+    </nav>
+  </main>
+
+  <!-- ============ PAINÉIS ============ -->
+  <aside id="bgDrawer" class="drawer hidden">
+    <div class="drawer-head"><h3>Fundo</h3><button class="x" data-close>✕</button></div>
+    <div id="bgSlotDrawer"></div>
+  </aside>
+
+  <div id="bgPicker" class="bg-picker">
+    <div class="bg-title">Fundo</div>
+    <div id="bgGrid" class="bg-grid"></div>
+    <label class="slider hidden" id="blurRow">Intensidade do desfoque
+      <input type="range" id="blurRange" min="4" max="30" value="14" />
+    </label>
+    <p class="hint" id="bgStatus"></p>
+  </div>
+
+  <dialog id="settingsDialog">
+    <h3>⚙️ Ajustes</h3>
+    <div id="settingsSlot"></div>
+    <div class="dialog-actions"><button class="btn" data-close>Fechar</button></div>
+  </dialog>
+
+  <div id="toast" class="toast"></div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
